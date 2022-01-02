@@ -37,7 +37,6 @@ public class LZ77 {
                                 cMatch = tempMatch;
                             }
                         } else {
-                            cMatch = tempMatch;
                             break;
                         }
                     }
@@ -70,18 +69,25 @@ public class LZ77 {
                         }
 
                     }
-                    if (buffer.length() == 0 || cMatch.equals("")) {
-                        buffer.append((char) c);
+                    if (buffer.length() == 0) {
+                        buffer.append(cMatch);
+                        writer.write("0,"+"0"+cMatch);
                         window.remove(0);
                         currentWindowSize--;
                     }
-                    String codedString = "~"+index+"~"+cMatch.length()+"~"+cMatch.substring(cMatch.length()-1);
-                    String raw = cMatch;
-                    if (codedString.length()<raw.length()){
+                    else {
+                        String codedString = buffer.indexOf(cMatch)+cMatch.length()+cMatch.substring(cMatch.length()-1);
+
                         writer.write(codedString);
+                        cMatch="";
                     }
-                    else writer.write(raw);
-                    cMatch = "";
+
+//                    String raw = cMatch;
+//                    if (codedString.length()<raw.length()){
+//
+//                    }
+//                    else writer.write(raw);
+//                    cMatch = "";
                 }
             }
             writer.close();
