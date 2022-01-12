@@ -1,6 +1,7 @@
 import java.io.*;
 import java.lang.reflect.Array;
 import java.math.BigInteger;
+import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -57,7 +58,7 @@ public class LZ77 {
                             buffer.deleteCharAt(0);
                         }
                         buffer.append(cMatch);
-                        writer.write("0" + "0" + cMatch);
+                        writer.write("~" + "0" + "~"+ "0"+ "~" + cMatch);
                         window.remove(0);
                         currentWindowSize--;
                         cMatch = "";
@@ -69,7 +70,7 @@ public class LZ77 {
                             window.remove(0);
                             currentWindowSize--;
                         }
-                        codedString = buffer.indexOf(cMatch) + "" + cMatch.length() + "" + tempMatch.substring(tempMatch.length() - 1);
+                        codedString = "~" + buffer.indexOf(cMatch) + "~" + cMatch.length() + "~" + tempMatch.substring(tempMatch.length() - 1);
                         writer.write(codedString);
                         cMatch = "";
                     }
@@ -84,7 +85,7 @@ public class LZ77 {
                             window.remove(0);
                             currentWindowSize--;
                         }
-                        codedString = buffer.indexOf(cMatch) + "~" + cMatch.length() + "" + tempMatch.substring(tempMatch.length() - 1);
+                        codedString = "~" + buffer.indexOf(cMatch) + "~" + cMatch.length() + "~" + tempMatch.substring(tempMatch.length() - 1);
                         writer.write(codedString);
                         cMatch = "";
                     }
@@ -150,5 +151,76 @@ public class LZ77 {
         } catch (IOException e) {
             e.printStackTrace();
         }
+    }
+
+    private void trimSearchBuffer() {
+        if (buffer.length() > b) {
+           buffer =
+                    buffer.delete(0,  buffer.length() - b);
+        }
+    }
+
+    public void unCompress(String infile) throws IOException {
+        BufferedReader mIn = new BufferedReader(new FileReader(infile+".lz77"));
+        buffer = new StringBuffer(b);
+
+        StreamTokenizer st = new StreamTokenizer(mIn);
+
+        st.ordinaryChar((int)' ');
+        st.ordinaryChar((int)'.');
+        st.ordinaryChar((int)'-');
+        st.ordinaryChar((int)'\n');
+        st.wordChars((int)'\n', (int)'\n');
+        st.wordChars((int)' ', (int)'}');
+
+        int offset, length;
+        while (st.nextToken() != StreamTokenizer.TT_EOF) {
+            switch (st.ttype) {
+                case StreamTokenizer.TT_WORD:
+                    if (buffer.length()+st.sval.length()>b){
+                        for (int i=0; i< buffer.length()+st.sval.length()-b;i++){
+                            buffer.deleteCharAt(0);
+                        }
+                    }
+                    buffer.append(st.sval);
+                    System.out.print(st.sval);
+                    // Adjust search buffer size if necessary
+                    break;
+                case StreamTokenizer.TT_NUMBER:
+                    offset = (int)st.nval; // set the offset
+                    st.nextToken(); // get the separator (hopefully)
+                    if (st.ttype == StreamTokenizer.TT_WORD) {
+
+                        if (buffer.length()+st.sval.length()>b){
+                            for (int i=0; i< buffer.length()+st.sval.length()-b;i++){
+                                buffer.deleteCharAt(0);
+                            }
+                        }
+                        // we got a word instead of the separator,
+                        // therefore the first number read was actually part of a word
+                        buffer.append(offset+st.sval);
+                        System.out.print(offset+st.sval);
+                        break; // break out of the switch
+                    }
+                    // if we got this far then we must be reading a
+                    // substitution pointer
+                    st.nextToken(); // get the length
+                    length = (int)st.nval;
+                    // output substring from search buffer
+                    String output = buffer.substring(offset, offset+length);
+                    System.out.print(output);
+                    if (buffer.length()+output.length()>b){
+                        for (int i=0; i< buffer.length()+output.length()-b;i++){
+                            buffer.deleteCharAt(0);
+                        }
+                    }
+                    buffer.append(output);
+                    // Adjust search buffer size if necessary
+                    break;
+                default:
+                    // consume a '~'
+            }
+        }
+        mIn.close();
     }
 }
